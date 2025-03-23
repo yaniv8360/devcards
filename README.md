@@ -20,4 +20,4 @@ Edit `students.json` and add yourself:
 }
 ```
 
-Push your change and once CI/CD passes — it will be live!
+Push your change and once CI/CD passes it will be live!
