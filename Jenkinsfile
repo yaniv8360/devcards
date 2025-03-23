@@ -1,10 +1,12 @@
 pipeline {
     agent any
-
+    when {
+        changeRequest()
+    }
     stages {
-        stage('Hello') {
+        stage('Test') {
             steps {
-                echo 'Hello World'
+                echo "Running PR build for branch: ${env.BRANCH_NAME}"
             }
         }
     }
