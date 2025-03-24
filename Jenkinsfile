@@ -1,60 +1,59 @@
 pipeline {
     agent any
 
-    environment {
-        IMAGE_NAME = 'devcards'
-        CONTAINER_NAME = "devcards-container-${env.BUILD_ID}"
+    triggers {
+        // This is used for GitHub webhook trigger
+        githubPush()
+    }
+
+    options {
+        disableConcurrentBuilds() // Avoid multiple concurrent builds
     }
 
     stages {
-
-        stage('Validate PR Target') {
+        stage('Checkout') {
             when {
-                expression {
-                    return !(env.CHANGE_ID && env.CHANGE_TARGET == 'develop')
-                }
+                branch 'develop'
             }
             steps {
-                echo "This pipeline only runs for PRs targeting 'develop'. Skipping."
-                script {
-                    currentBuild.result = 'SUCCESS'
-                    exit 0
-                }
-            }
-        }
-
-        stage('Checkout Code') {
-            steps {
+                echo "Checking out code from develop branch"
                 checkout scm
             }
+
+            
         }
 
-        stage('Build Docker Image') {
+        stage('Build') {
+            when {
+                branch 'develop'
+            }
             steps {
-                sh '''
-                    docker build -t ${IMAGE_NAME}:${BUILD_ID} .
-                '''
+                echo "Building the app..."
+                // Example: sh 'npm install'
             }
         }
 
-        stage('Run Docker Container') {
+        stage('Test') {
+            when {
+                branch 'develop'
+            }
             steps {
-                sh '''
-                    docker rm -f ${CONTAINER_NAME} || true
-                    docker run -d --name ${CONTAINER_NAME} -p 8000:8000 ${IMAGE_NAME}:${BUILD_ID}
-                '''
+                echo "Running tests..."
+                // Example: sh 'npm test'
             }
         }
 
+        stage('Deploy de') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                echo "Deploying the app..."
+                // Example: sh './deploy.sh'
+            }
 
 
-        
-
-    }
-
-    post {
-        always {
-            echo 'Pipeline execution completed.'
+            
         }
     }
 }
