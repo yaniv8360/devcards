@@ -19,7 +19,7 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 // Mock: Install project dependencies (e.g., npm, pip, etc.)
-                echo '📦 Installing project dependencies'
+                echo 'Installing project dependencies'
                 echo '>> npm ci'
             }
         }
@@ -75,7 +75,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 // Mock: Build a Docker image from the current project
-                echo '🐳 Building Docker image'
+                echo 'Building Docker image'
                 echo '>> docker build -t my-app:latest .'
             }
         }
