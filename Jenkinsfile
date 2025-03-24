@@ -9,14 +9,16 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    if (env.BRANCH_NAME == 'develop' || env.CHANGE_TARGET == 'develop') {  // Trigger only if targeting 'develop'
+                    if (env.BRANCH_NAME == 'develop' || env.CHANGE_TARGET == 'develop') {
                         checkout scm
                     } else {
-                        error('Pull request is not targeting develop, aborting...')
+                        echo 'Not targeting develop, proceeding anyway...'
+                        checkout scm
                     }
                 }
             }
         }
+        
 
         stage('Build') {
             steps {
