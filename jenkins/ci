@@ -95,14 +95,6 @@ pipeline {
                 echo '>> curl -f http://localhost:3000/health || exit 1'
             }
         }
-        stage('Build Docker Image') {
-            steps {
-                echo 'Building Docker image'
-                sh '''
-                    docker build -t myuser/my-app:${BUILD_VERSION} .
-                '''
-            }
-        }
 
         stage('Push Docker Image to Artifactory') {
             steps {
