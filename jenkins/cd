@@ -1,0 +1,143 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = 'my-app'
+        BUILD_VERSION = '1.0.0'
+        ARTIFACTORY_URL = 'artifactory.mycompany.com'
+        ARTIFACTORY_REPO = 'docker-local'
+        FULL_IMAGE = "${ARTIFACTORY_URL}/${ARTIFACTORY_REPO}/${IMAGE_NAME}:${BUILD_VERSION}"
+
+        KUBECONFIG_CREDENTIALS = credentials('kubeconfig-jenkins')
+    }
+
+    stages {
+
+        /* === DEVELOPMENT === */
+        stage('Deploy to Development') {
+            steps {
+                echo 'Deploying to Development'
+                withCredentials([file(credentialsId: 'kubeconfig-jenkins', variable: 'KUBECONFIG')]) {
+                    sh '''
+                        export KUBECONFIG=$KUBECONFIG
+                        kubectl set image deployment/my-app my-app-container=${FULL_IMAGE} --namespace=dev
+                        kubectl rollout status deployment/my-app --namespace=dev
+                    '''
+                }
+            }
+        }
+
+        stage('Smoke Test - Development') {
+            steps {
+                echo 'Smoke Test in DEV'
+                sh '''
+                    curl -f http://my-app.dev.mycompany.com/health || exit 1
+                '''
+            }
+        }
+
+        stage('Integration Tests - Development') {
+            steps {
+                echo 'Integration Tests in DEV'
+                sh '''
+                    npm run test:integration -- --env=dev
+                '''
+            }
+        }
+
+        stage('Contract/API Tests - Development') {
+            steps {
+                echo 'API Contract Tests in DEV'
+                sh '''
+                    npm run test:contract -- --env=dev
+                '''
+            }
+        }
+
+        stage('Gate: Promote to Staging') {
+            steps {
+                input message: 'All DEV tests passed. Promote to STAGING?', ok: 'Promote'
+            }
+        }
+
+        /* === STAGING === */
+        stage('Deploy to Staging') {
+            steps {
+                echo 'Deploying to Staging'
+                withCredentials([file(credentialsId: 'kubeconfig-jenkins', variable: 'KUBECONFIG')]) {
+                    sh '''
+                        export KUBECONFIG=$KUBECONFIG
+                        kubectl set image deployment/my-app my-app-container=${FULL_IMAGE} --namespace=staging
+                        kubectl rollout status deployment/my-app --namespace=staging
+                    '''
+                }
+            }
+        }
+
+        stage('Smoke Test - Staging') {
+            steps {
+                echo 'Smoke Test in STAGING'
+                sh '''
+                    curl -f http://my-app.staging.mycompany.com/health || exit 1
+                '''
+            }
+        }
+
+        stage('Integration Tests - Staging') {
+            steps {
+                echo 'Integration Tests in STAGING'
+                sh '''
+                    npm run test:integration -- --env=staging
+                '''
+            }
+        }
+
+        stage('End-to-End Tests - Staging') {
+            steps {
+                echo 'E2E Tests in STAGING'
+                sh '''
+                    npm run test:e2e -- --baseUrl=http://my-app.staging.mycompany.com
+                '''
+            }
+        }
+
+        stage('Gate: Promote to Production') {
+            steps {
+                input message: 'All STAGING tests passed. Deploy to PRODUCTION?', ok: 'Deploy to PROD'
+            }
+        }
+
+        /* === PRODUCTION === */
+        stage('Deploy to Production') {
+            steps {
+                echo 'Deploying to Production'
+                withCredentials([file(credentialsId: 'kubeconfig-jenkins', variable: 'KUBECONFIG')]) {
+                    sh '''
+                        export KUBECONFIG=$KUBECONFIG
+                        kubectl set image deployment/my-app my-app-container=${FULL_IMAGE} --namespace=prod
+                        kubectl rollout status deployment/my-app --namespace=prod
+                    '''
+                }
+            }
+        }
+
+        stage('Smoke Test - Production') {
+            steps {
+                echo 'Smoke Test in PROD'
+                sh '''
+                    curl -f http://my-app.prod.mycompany.com/health || exit 1
+                '''
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo 'CD Pipeline completed successfully across all environments!'
+        }
+        failure {
+            echo 'CD Pipeline failed. Please investigate the issue.'
+        }
+    }
+}
