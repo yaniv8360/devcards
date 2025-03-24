@@ -1,0 +1,130 @@
+pipeline {
+    agent any
+
+    environment {
+        // Example: use a Jenkins credential for Snyk (if needed)
+        SNYK_TOKEN = credentials('snyk-token') 
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                // Pulls the source code from the Git repository
+                echo 'Checking out source code'
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                // Mock: Install project dependencies (e.g., npm, pip, etc.)
+                echo '📦 Installing project dependencies'
+                echo '>> npm ci'
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                // Mock: Run linter to check code style and formatting
+                echo 'Running linter'
+                echo '>> npm run lint'
+            }
+        }
+
+        stage('Static Code Analysis (SAST)') {
+            steps {
+                // Mock: Run static code analysis using a tool like SonarQube or Semgrep
+                echo 'Running static code analysis (SAST)'
+                echo '>> sonar-scanner -Dsonar.projectKey=my-project ...'
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                // Mock: Run unit tests
+                echo 'Running unit tests'
+                echo '>> npm test'
+            }
+        }
+
+        stage('Code Coverage') {
+            steps {
+                // Mock: Measure how much code is covered by tests
+                echo 'Checking test coverage'
+                echo '>> npm run coverage'
+            }
+        }
+
+        stage('Dependency Scan (SCA)') {
+            steps {
+                // Mock: Scan third-party dependencies for known vulnerabilities
+                echo 'Running Software Composition Analysis (SCA)'
+                echo '>> snyk test'
+            }
+        }
+
+        stage('Secrets Scan') {
+            steps {
+                // Mock: Search the codebase for exposed secrets or credentials
+                echo 'Scanning for hardcoded secrets'
+                echo '>> gitleaks detect --source .'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                // Mock: Build a Docker image from the current project
+                echo '🐳 Building Docker image'
+                echo '>> docker build -t my-app:latest .'
+            }
+        }
+
+        stage('Scan Docker Image') {
+            steps {
+                // Mock: Scan Docker image for OS/package vulnerabilities
+                echo 'Scanning Docker image for vulnerabilities'
+                echo '>> trivy image my-app:latest'
+            }
+        }
+
+        stage('Smoke Tests') {
+            steps {
+                // Mock: Run simple health checks to ensure app is running
+                echo 'Running smoke tests'
+                echo '>> curl -f http://localhost:3000/health || exit 1'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker image'
+                sh '''
+                    docker build -t myuser/my-app:${BUILD_VERSION} .
+                '''
+            }
+        }
+
+        stage('Push Docker Image to Artifactory') {
+            steps {
+                echo 'Pushing image to Artifactory Docker registry'
+                sh '''
+                    echo "${ARTIFACTORY_CREDENTIALS_PSW}" | docker login -u "${ARTIFACTORY_CREDENTIALS_USR}" --password-stdin ${ARTIFACTORY_URL}
+                    docker tag myuser/my-app:${BUILD_VERSION} ${ARTIFACTORY_URL}/docker-local/my-app:${BUILD_VERSION}
+                    docker push ${ARTIFACTORY_URL}/docker-local/my-app:${BUILD_VERSION}
+                '''
+            }
+        }
+  
+    }
+
+    post {
+        success {
+            // Will run if the pipeline completes successfully
+            echo 'Pipeline completed successfully'
+        }
+        failure {
+            // Will run if any stage fails
+            echo 'Pipeline failed. Please check the logs.'
+        }
+    }
+}
