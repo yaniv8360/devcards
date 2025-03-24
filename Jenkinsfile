@@ -1,54 +1,60 @@
 pipeline {
     agent any
 
-    triggers {
-        pollSCM('* * * * *')  // Polling every minute. Adjust as needed.
+    environment {
+        IMAGE_NAME = 'devcards'
+        CONTAINER_NAME = "devcards-container-${env.BUILD_ID}"
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Validate PR Target') {
+            when {
+                expression {
+                    return !(env.CHANGE_ID && env.CHANGE_TARGET == 'develop')
+                }
+            }
             steps {
+                echo "This pipeline only runs for PRs targeting 'develop'. Skipping."
                 script {
-                    if (env.BRANCH_NAME == 'develop' || env.CHANGE_TARGET == 'develop') {
-                        checkout scm
-                    } else {
-                        echo 'Not targeting develop, proceeding anyway...'
-                        checkout scm
-                    }
+                    currentBuild.result = 'SUCCESS'
+                    exit 0
                 }
             }
         }
+
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                    docker build -t ${IMAGE_NAME}:${BUILD_ID} .
+                '''
+            }
+        }
+
+        stage('Run Docker Container') {
+            steps {
+                sh '''
+                    docker rm -f ${CONTAINER_NAME} || true
+                    docker run -d --name ${CONTAINER_NAME} -p 8000:8000 ${IMAGE_NAME}:${BUILD_ID}
+                '''
+            }
+        }
+
+
+
         
 
-        stage('Build') {
-            steps {
-                sh 'echo Building the project...'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                sh 'echo Running tests...'
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                sh 'echo Deploying the project...'
-            }
-        }
     }
 
     post {
         always {
-            echo 'Cleaning up...'
-            cleanWs()
-        }
-        success {
-            echo 'Build completed successfully!'
-        }
-        failure {
-            echo 'Build failed. Please check the logs.'
+            echo 'Pipeline execution completed.'
         }
     }
 }
