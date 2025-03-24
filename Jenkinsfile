@@ -1,56 +1,52 @@
 pipeline {
     agent any
 
-    environment {
-        IMAGE_NAME = 'devcards'
-        CONTAINER_NAME = "devcards-container-${env.BUILD_ID}"
+    triggers {
+        pollSCM('* * * * *')  // Polling every minute. Adjust as needed.
     }
 
     stages {
-
-        stage('Validate PR Target') {
-            when {
-                expression {
-                    return !(env.CHANGE_ID && env.CHANGE_TARGET == 'develop')
-                }
-            }
+        stage('Checkout') {
             steps {
-                echo "This pipeline only runs for PRs targeting 'develop'. Skipping."
                 script {
-                    currentBuild.result = 'SUCCESS'
-                    exit 0
+                    if (env.BRANCH_NAME == 'develop' || env.CHANGE_TARGET == 'develop') {  // Trigger only if targeting 'develop'
+                        checkout scm
+                    } else {
+                        error('Pull request is not targeting develop, aborting...')
+                    }
                 }
             }
         }
 
-        stage('Checkout Code') {
+        stage('Build') {
             steps {
-                checkout scm
+                sh 'echo Building the project...'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Test') {
             steps {
-                sh '''
-                    docker build -t ${IMAGE_NAME}:${BUILD_ID} .
-                '''
+                sh 'echo Running tests...'
             }
         }
 
-        stage('Run Docker Container') {
+        stage('Deploy') {
             steps {
-                sh '''
-                    docker rm -f ${CONTAINER_NAME} || true
-                    docker run -d --name ${CONTAINER_NAME} -p 8000:8000 ${IMAGE_NAME}:${BUILD_ID}
-                '''
+                sh 'echo Deploying the project...'
             }
         }
-
     }
 
     post {
         always {
-            echo 'Pipeline execution completed.'
+            echo 'Cleaning up...'
+            cleanWs()
+        }
+        success {
+            echo 'Build completed successfully!'
+        }
+        failure {
+            echo 'Build failed. Please check the logs.'
         }
     }
 }
